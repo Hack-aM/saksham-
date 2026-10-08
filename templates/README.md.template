@@ -1,0 +1,22 @@
+# {{ project_name }}
+
+FastAPI web application deployed with Saksham.
+
+## Prerequisites
+- Python 3.11+
+
+## Local Development
+1. Create and activate a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Configure environment variables in `.env` (refer to `.env.example`).
+4. Start development server:
+   ```bash
+   uvicorn {{ entry_point }}:app --host 0.0.0.0 --port 8000 --reload
+   ```

@@ -1,0 +1,6 @@
+# Saksham Gitleaks Configuration
+# Enforces comprehensive secret detection extending default rules
+title = "Saksham Gitleaks Rules"
+
+[extend]
+useDefault = true

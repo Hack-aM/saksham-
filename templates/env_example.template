@@ -1,0 +1,8 @@
+# Application Configuration
+PORT=8000
+ENVIRONMENT=development
+DEBUG=False
+
+# Add required secrets and environment variables below (without values):
+# DATABASE_URL=
+# API_KEY=

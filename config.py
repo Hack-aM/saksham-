@@ -44,38 +44,45 @@ class Settings:
         max_upload_size_bytes: Optional[int] = None,
         gitleaks_path: Optional[str] = None,
     ) -> None:
+        # Use explicit None sentinel so callers can pass "" to mean "empty / missing".
+        # `or` would treat "" as falsy and fall through to os.getenv(), leaking
+        # the real credential from .env into test scenarios.
         self.gitleaks_path: str = (
-            gitleaks_path
-            or os.getenv("GITLEAKS_PATH", "").strip()
+            os.getenv("GITLEAKS_PATH", "").strip() if gitleaks_path is None
+            else gitleaks_path.strip()
         )
         self.gemini_api_key: str = (
-            gemini_api_key
-            or os.getenv("GEMINI_API_KEY", "").strip()
+            os.getenv("GEMINI_API_KEY", "").strip() if gemini_api_key is None
+            else gemini_api_key.strip()
         )
         self.github_token: str = (
-            github_token
-            or os.getenv("GITHUB_TOKEN", "").strip()
+            os.getenv("GITHUB_TOKEN", "").strip() if github_token is None
+            else github_token.strip()
         )
         self.render_api_key: str = (
-            render_api_key
-            or os.getenv("RENDER_API_KEY", "").strip()
+            os.getenv("RENDER_API_KEY", "").strip() if render_api_key is None
+            else render_api_key.strip()
         )
         self.gemini_model: str = (
-            gemini_model
-            or os.getenv("GEMINI_MODEL", "").strip()
+            os.getenv("GEMINI_MODEL", "").strip() if gemini_model is None
+            else gemini_model.strip()
         )
-        self.port: int = port or int(os.getenv("PORT", "8000"))
+        _port_str: str = os.getenv("PORT", "").strip()
+        self.port: int = port if port is not None else (int(_port_str) if _port_str else 8000)
+        _env_str: str = os.getenv("ENVIRONMENT", "").strip()
         self.environment: str = (
-            environment
-            or os.getenv("ENVIRONMENT", "development").strip()
+            environment if environment is not None
+            else (_env_str if _env_str else "development")
         )
+        _db_default: str = str(BASE_DIR / "saksham.db")
+        _db_str: str = os.getenv("DB_PATH", "").strip()
         self.db_path: str = (
-            db_path
-            or os.getenv("DB_PATH", str(BASE_DIR / "saksham.db")).strip()
+            db_path.strip() if db_path is not None
+            else (_db_str if _db_str else _db_default)
         )
         self.max_upload_size_bytes: int = (
-            max_upload_size_bytes
-            or int(os.getenv("MAX_UPLOAD_SIZE_BYTES", str(25 * 1024 * 1024)))
+            max_upload_size_bytes if max_upload_size_bytes is not None
+            else int(os.getenv("MAX_UPLOAD_SIZE_BYTES", str(25 * 1024 * 1024)))
         )  # 25 MB compressed limit
         self.max_uncompressed_size_bytes: int = (
             int(os.getenv("MAX_UNCOMPRESSED_SIZE_BYTES", str(100 * 1024 * 1024)))

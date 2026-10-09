@@ -95,3 +95,39 @@ def test_get_settings_singleton() -> None:
     s1 = get_settings()
     s2 = get_settings()
     assert s1 is s2
+
+
+# ---------------------------------------------------------------------------
+# PORT environment-variable regression tests (T31 security review)
+# Each test patches os.getenv directly to isolate from the real .env file.
+# ---------------------------------------------------------------------------
+
+def test_port_unset_uses_default() -> None:
+    """PORT absent from environment must resolve to the default 8000."""
+    import os
+    from unittest.mock import patch
+
+    env_without_port = {k: v for k, v in os.environ.items() if k != "PORT"}
+    with patch.dict(os.environ, env_without_port, clear=True):
+        settings = Settings()
+        assert settings.port == 8000
+
+
+def test_port_empty_string_uses_default() -> None:
+    """PORT='' (blank line in .env) must resolve to the default 8000, not raise."""
+    import os
+    from unittest.mock import patch
+
+    with patch.dict(os.environ, {"PORT": ""}, clear=False):
+        settings = Settings()
+        assert settings.port == 8000
+
+
+def test_port_valid_value_is_preserved() -> None:
+    """PORT=9000 must resolve to 9000, not the default."""
+    import os
+    from unittest.mock import patch
+
+    with patch.dict(os.environ, {"PORT": "9000"}, clear=False):
+        settings = Settings()
+        assert settings.port == 9000

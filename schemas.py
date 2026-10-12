@@ -141,3 +141,31 @@ class ProgressEvent(BaseModel):
     percentage: Optional[int] = Field(default=None, ge=0, le=100, description="Progress percentage (0-100).")
     timestamp: float = Field(default_factory=time.time, description="Unix timestamp.")
     details: Optional[Dict[str, Any]] = Field(default=None, description="Optional safe stage metadata.")
+
+
+# ── T36: Authentication schemas ───────────────────────────────────────────────
+
+class RegisterRequest(BaseModel):
+    """Payload for POST /auth/register."""
+    email: str = Field(..., min_length=3, max_length=254, description="User email address.")
+    password: str = Field(..., min_length=8, max_length=128, description="Plain-text password (hashed server-side; never stored raw).")
+
+
+class LoginRequest(BaseModel):
+    """Payload for POST /auth/login."""
+    email: str = Field(..., min_length=3, max_length=254, description="User email address.")
+    password: str = Field(..., min_length=1, max_length=128, description="Plain-text password.")
+
+
+class UserPublic(BaseModel):
+    """Safe subset of the users table returned to callers; never includes password hash."""
+    id: str = Field(..., description="Unique user UUID.")
+    email: str = Field(..., description="User email address.")
+    github_login: Optional[str] = Field(default=None, description="GitHub username, if authenticated via OAuth.")
+    created_at: str = Field(..., description="ISO-8601 creation timestamp.")
+
+
+class LoginResponse(BaseModel):
+    """Returned by /auth/login and /auth/github/callback on success."""
+    user: UserPublic
+    message: str = Field(default="Authenticated successfully.")

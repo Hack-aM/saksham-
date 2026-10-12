@@ -31,22 +31,30 @@ SQLite relational store (`saksham.db`) for run and deploy history (decided).
 
 | Entity | Fields | Relationships |
 |---|---|---|
+| User | id, email, password_hash, github_id, github_login, created_at | owns user account and sessions |
 | Analysis | id, project_name, stack, score, created_at | has many Issues, Patches |
 | Issue | id, analysis_id, severity (High/Medium/Low), title, file, line, explanation | belongs to Analysis |
 | Patch | id, analysis_id, issue_id, file, old, new, reason, status (suggested/approved/applied/rejected) | belongs to Issue |
 | Deployment | id, analysis_id, repo_url, live_url, platform, health_status, final_score, logs, created_at | belongs to Analysis |
 
-Tokens and secret values are never stored in the database.
+Tokens and secret values are never stored in the database. Password hashes are computed with salted bcrypt.
 
 ## 5. Authentication architecture
-- GitHub: Personal Access Token (scopes `repo`, `workflow`) for MVP; used only to create new repos (decided).
+- User accounts: Local email/password registration with bcrypt salted password hashing, plus GitHub OAuth login.
+- Session handling: Cryptographically signed time-limited tokens via `itsdangerous` URLSafeTimedSerializer, delivered in HTTP-only, SameSite=Lax session cookies or Bearer Authorization headers.
+- GitHub repo creation: Personal Access Token (scopes `repo`, `workflow`) for repository provisioning; new repos only, never deletes or force-pushes.
 - Deploy platform: Render API token (`RENDER_API_KEY`).
 - LLM API: Google Gemini API key (`GEMINI_API_KEY`).
-- Saksham user login: Single-user local application, no login in MVP.
 
 ## 6. API structure
 | Endpoint | Method | Purpose |
 |---|---|---|
+| `/auth/register` | POST | Register with email and password; returns safe user object and issues session cookie |
+| `/auth/login` | POST | Authenticate with email and password; returns safe user object and issues session cookie |
+| `/auth/logout` | POST | Clear session cookie and terminate active session |
+| `/auth/me` | GET | Retrieve authenticated profile for current session |
+| `/auth/github` | GET | Initiate GitHub OAuth authorization flow (redirect or JSON URL) |
+| `/auth/github/callback` | GET | GitHub OAuth callback; exchange code, upsert user, set session cookie |
 | `/analyze` | POST | Accepts ZIP upload (max 25MB); runs scan, audit, fix suggestions; returns score, issues, patches |
 | `/approve` | POST | Accepts approved patch IDs and repo options; applies patches, pushes to GitHub, deploys to Render, verifies |
 | `/events/{run_id}` | GET | SSE stream of progress logs |

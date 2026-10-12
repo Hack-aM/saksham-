@@ -121,7 +121,7 @@ Features 1-13 above, restricted to one project type (FastAPI) and one deploy pla
 | NC-3 | LLM Provider | **Decided:** Google Gemini API (`gemini-2.5-flash` via `google-genai`). |
 | NC-4 | Deploy Platform | **Decided:** Render API. No mock deployer in product flow; MOCK used only in unit/integration tests. |
 | NC-5 | Database / History | **Decided:** SQLite database for storing deploy history and run results. |
-| NC-6 | Saksham Login | **REOPENED:** User now wants a login page with GitHub login and email login. T35 implements UI only (login route, dark theme, no backend auth yet, buttons show not connected without sending or storing credentials). T36 (Auth backend) is proposed and marked BLOCKED (needs user decision on GitHub OAuth, email auth method, and how the GitHub token for repo creation changes). |
+| NC-6 | Saksham Login | **Decided & Implemented:** T35 (UI login screen) and T36 (Authentication backend) implemented. Supports GitHub OAuth and email/password registration and login with bcrypt salted password hashing and itsdangerous signed HTTP-only session cookies. |
 | NC-7 | Score Formula | **Decided:** Base 100; High severity -30, Medium -15, Low -5. (Floor 0, Cap 100). |
 | NC-8 | UI Language | **Decided:** English throughout the entire UI. |
 | NC-9 | Hackathon details | Non-blocking hackathon deliverables (7-slide deck, backup demo video, leak stat). |

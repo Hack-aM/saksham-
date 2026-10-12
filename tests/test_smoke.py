@@ -15,6 +15,7 @@ MODULES = [
     "llm",
     "github_push",
     "deployer",
+    "auth",
 ]
 
 

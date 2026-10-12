@@ -68,19 +68,18 @@ FastAPI pipeline: scanner, audit, fixer (LLM), github_push, deployer, with Pydan
 - **T28: History, Connections, Settings screens implemented in `frontend/` (`HistoryScreen.jsx`, `ConnectionsScreen.jsx`, `SettingsScreen.jsx`, `App.jsx`, `main.py`, `tests/test_history_settings.py`) with SQLite `/history` querying, safe integration status metadata `/connections`, operational parameters `/settings`, and functional sidebar navigation, verified via Vite production build and full pytest regression suite (214 passed).**
 - **T29: End-to-end happy path implemented and verified across whole pipeline (`main.py`, `frontend/src/App.jsx`, `frontend/src/components/ConnectionsScreen.jsx`, `db.py`, `deployer.py`, `tests/test_e2e_happy_path.py`), orchestrating ZIP upload -> analyze -> audit -> patch approval -> secret gate -> mocked GitHub push -> mocked Render deploy -> live health verification & self-fix -> SQLite history persistence -> real-time SSE progress streaming -> terminal completion, verified via Vite build and full pytest regression suite (223 passed).**
 - **T30: Final Integration Hardening and Demo Readiness verified across the complete application (`main.py`, `db.py`, `config.py`, `schemas.py`, `upload.py`, `scanner.py`, `audit.py`, `fixer.py`, `github_push.py`, `deployer.py`, `redact.py`, `frontend/src/*`, `README.md`, `tests/*`). Full codebase security audit passed with zero exposed credentials; human approval and secret gate verified; bounded self-fix and SSE resilience confirmed; API error responses sanitized; and README documentation completed, verified via clean Vite production build and full pytest regression suite (223 passed).**
-- **T35: Login screen (UI only) implemented in `frontend/` (`LoginScreen.jsx`, `App.jsx`, `Sidebar.jsx`, `index.css`). Created two-column layout with scoped dark theme (#0E1418 page bg, #121A20 preview panel, #25313A border, #18232B cards, #E8EEF2 text, #9DB0BC muted, #33424D input border, #4FC4BB accent with #07211F button text, High badge bg #2C1A19 / text #FF8A80, Medium badge bg #2B2312 / text #F2C46B; Plus Jakarta Sans; min 44px control height; 2px accent focus ring; WCAG AA contrast). Form column contains logo, heading, subtitle, primary Continue with GitHub button with inline SVG mark, helper text, divider, email and password inputs with labels and autocomplete, forgot password link, secondary Sign in with email button, and Create an account footer. Right preview panel shows sample Deploy Readiness 40/100 card with Push blocked badge, 3 issue rows, and 2 sub-cards (Fixes and Deploy), hidden on <= 860px. Verified no fake authentication: buttons alert that backend auth is pending T36, no credentials sent or stored. Existing screens completely unstyled. Verified via clean Vite build (`npm run build` in 9.27s) and pytest regression suite (226 passed).**
+- **T36: Auth backend implemented in `auth.py`, `main.py`, `schemas.py`, `db.py`, `config.py`, `frontend/src/components/LoginScreen.jsx`, `frontend/src/App.jsx`, `frontend/src/components/Sidebar.jsx`, `tests/test_auth.py`.** Added `users` table to SQLite `saksham.db`, bcrypt password hashing, itsdangerous signed URLSafeTimedSerializer session tokens, HTTP-only secure cookie sessions, registration (`POST /auth/register`), login (`POST /auth/login`), logout (`POST /auth/logout`), profile (`GET /auth/me`), GitHub OAuth authorization and callback flow (`GET /auth/github`, `GET /auth/github/callback`), frontend user session integration in App/Sidebar, and 15 comprehensive unit & integration tests. Dependency additions justification per RULES.md item 10: `bcrypt==4.2.1` provides industry-standard salted password hashing; `itsdangerous==2.2.0` provides tamper-proof cryptographic signing for session cookies. Verified via Vite build (9.48s) and pytest regression suite (242 passed, 0 skipped, 0 failures).
 
 ## IN PROGRESS
 - None.
 
 ## NEXT
-- Waiting for user decisions on T36 Auth backend (BLOCKED) or next instruction.
+- Phase 8 UI polish (T32) or Phase 9 Demo deliverables (T34).
 
 ## BLOCKED
-- **T36: Auth backend** (needs user decision on GitHub OAuth, email auth method, and how the GitHub token for repo creation changes).
+- T33: Deploy Saksham itself (NC-10).
 
 ## PENDING DECISIONS (Needs clarification)
-- NC-6 (REOPENED: User decision needed for T36 on GitHub OAuth, email auth method, and GitHub repo creation token changes).
 - Non-blocking: NC-9 (Hackathon specifics: deadline, team size), NC-12 (Exact extra screens mockup details).
 
 ## KNOWN ISSUES

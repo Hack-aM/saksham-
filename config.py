@@ -43,6 +43,9 @@ class Settings:
         db_path: Optional[str] = None,
         max_upload_size_bytes: Optional[int] = None,
         gitleaks_path: Optional[str] = None,
+        github_oauth_client_id: Optional[str] = None,
+        github_oauth_client_secret: Optional[str] = None,
+        session_secret: Optional[str] = None,
     ) -> None:
         # Use explicit None sentinel so callers can pass "" to mean "empty / missing".
         # `or` would treat "" as falsy and fall through to os.getenv(), leaking
@@ -67,6 +70,21 @@ class Settings:
             os.getenv("GEMINI_MODEL", "").strip() if gemini_model is None
             else gemini_model.strip()
         )
+        self.github_oauth_client_id: str = (
+            os.getenv("GITHUB_OAUTH_CLIENT_ID", "").strip() if github_oauth_client_id is None
+            else github_oauth_client_id.strip()
+        )
+        self.github_oauth_client_secret: str = (
+            os.getenv("GITHUB_OAUTH_CLIENT_SECRET", "").strip() if github_oauth_client_secret is None
+            else github_oauth_client_secret.strip()
+        )
+        self.session_secret: str = (
+            os.getenv("SESSION_SECRET", "saksham-session-secret-change-in-production").strip()
+            if session_secret is None
+            else session_secret.strip()
+        )
+        self.session_cookie_name: str = "saksham_session"
+        self.session_max_age_seconds: int = 7 * 24 * 3600
         _port_str: str = os.getenv("PORT", "").strip()
         self.port: int = port if port is not None else (int(_port_str) if _port_str else 8000)
         _env_str: str = os.getenv("ENVIRONMENT", "").strip()

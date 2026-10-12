@@ -93,6 +93,18 @@ def init_db(db_path: Optional[str] = None) -> None:
                 FOREIGN KEY (analysis_id) REFERENCES analyses (id) ON DELETE CASCADE
             );
         """)
+
+        # 5. Users table (T36 authentication)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT,
+                github_id TEXT UNIQUE,
+                github_login TEXT,
+                created_at TEXT NOT NULL
+            );
+        """)
         conn.commit()
 
 
@@ -280,3 +292,130 @@ def update_patch_status(patch_id: str, status: str, db_path: Optional[str] = Non
         cursor.execute("UPDATE patches SET status = ? WHERE id = ?", (status, patch_id))
         conn.commit()
         return cursor.rowcount > 0
+
+
+# ── T36: User CRUD helpers ─────────────────────────────────────────────────
+
+def create_user(
+    email: str,
+    password_hash: Optional[str] = None,
+    github_id: Optional[str] = None,
+    github_login: Optional[str] = None,
+    db_path: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Insert a new user row.
+
+    Returns:
+        The created user dict, or None if the email is already taken.
+    """
+    user_id = str(uuid.uuid4())
+    created_at = datetime.now(timezone.utc).isoformat()
+    with get_connection(db_path) as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO users (id, email, password_hash, github_id, github_login, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, email.lower().strip(), password_hash, github_id, github_login, created_at),
+            )
+            conn.commit()
+        except sqlite3.IntegrityError:
+            # UNIQUE constraint on email or github_id
+            return None
+    return {
+        "id": user_id,
+        "email": email.lower().strip(),
+        "github_login": github_login,
+        "created_at": created_at,
+    }
+
+
+def get_user_by_email(email: str, db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Retrieve a user row by email (lowercased for comparison)."""
+    with get_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, email, password_hash, github_id, github_login, created_at FROM users WHERE email = ?",
+            (email.lower().strip(),),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_github_id(github_id: str, db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Retrieve a user row by GitHub numeric user ID."""
+    with get_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, email, password_hash, github_id, github_login, created_at FROM users WHERE github_id = ?",
+            (github_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def upsert_github_user(
+    github_id: str,
+    github_login: str,
+    email: str,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Create or update a user from GitHub OAuth data.
+
+    If a user already exists with this github_id or email, update their GitHub
+    metadata and return the existing row.  Otherwise create a new one.
+
+    Returns:
+        The user dict (never contains password_hash).
+    """
+    normalised_email = email.lower().strip()
+    # Check by github_id first, then by email
+    existing = get_user_by_github_id(github_id, db_path)
+    if not existing:
+        existing = get_user_by_email(normalised_email, db_path)
+
+    if existing:
+        with get_connection(db_path) as conn:
+            conn.execute(
+                "UPDATE users SET github_id = ?, github_login = ? WHERE id = ?",
+                (github_id, github_login, existing["id"]),
+            )
+            conn.commit()
+        return {
+            "id": existing["id"],
+            "email": existing["email"],
+            "github_login": github_login,
+            "created_at": existing["created_at"],
+        }
+
+    # New user from GitHub
+    created = create_user(
+        email=normalised_email,
+        github_id=github_id,
+        github_login=github_login,
+        db_path=db_path,
+    )
+    if created is None:
+        # Race condition: second lookup after concurrent insert
+        row = get_user_by_email(normalised_email, db_path) or {}
+        return {
+            "id": row.get("id", ""),
+            "email": normalised_email,
+            "github_login": github_login,
+            "created_at": row.get("created_at", ""),
+        }
+    return created
+
+
+def get_user_by_id(user_id: str, db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Retrieve a user row by user UUID."""
+    with get_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, email, password_hash, github_id, github_login, created_at FROM users WHERE id = ?",
+            (user_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None

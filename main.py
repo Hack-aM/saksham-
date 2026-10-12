@@ -10,12 +10,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile, status
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 
 from audit import AuditError, GitleaksNotFoundError, audit_project
+import auth
 from config import Settings, get_settings
+import db
 from db import get_analysis, init_db, list_analyses, list_deployments, save_analysis, save_deployment
 from deployer import deploy_project_to_render, run_self_fix_loop
 from github_push import push_workspace_to_github
@@ -32,12 +34,16 @@ from schemas import (
     ApproveRequest,
     ApproveResponse,
     Issue,
+    LoginRequest,
+    LoginResponse,
     Patch,
     PatchStatusEnum,
     ProgressEvent,
+    RegisterRequest,
     ScanResult,
     SeverityEnum,
     StageEnum,
+    UserPublic,
 )
 from upload import (
     ExtractedProject,
@@ -242,6 +248,165 @@ async def audit_error_handler(request: Request, exc: AuditError):
 def health_check():
     """Health check for Saksham API itself."""
     return {"status": "ok", "service": "Saksham API"}
+
+
+# ── T36: Authentication Routes ─────────────────────────────────────────────
+
+@app.post("/auth/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
+async def register(req: RegisterRequest, response: Response):
+    """Register a new user account with email and password."""
+    try:
+        user = auth.register_user(email=req.email, password=req.password)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email address already exists.",
+        )
+
+    cfg = get_settings()
+    token = auth.create_session_token(user["id"])
+    response.set_cookie(
+        key=cfg.session_cookie_name,
+        value=token,
+        max_age=cfg.session_max_age_seconds,
+        httponly=True,
+        samesite="lax",
+        secure=False if cfg.environment == "development" else True,
+    )
+    return LoginResponse(
+        user=UserPublic(**user),
+        message="Registration successful.",
+    )
+
+
+@app.post("/auth/login", response_model=LoginResponse)
+async def login(req: LoginRequest, response: Response):
+    """Authenticate with email and password and issue a session cookie."""
+    user = auth.authenticate_user(email=req.email, password=req.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+        )
+
+    cfg = get_settings()
+    token = auth.create_session_token(user["id"])
+    response.set_cookie(
+        key=cfg.session_cookie_name,
+        value=token,
+        max_age=cfg.session_max_age_seconds,
+        httponly=True,
+        samesite="lax",
+        secure=False if cfg.environment == "development" else True,
+    )
+    return LoginResponse(
+        user=UserPublic(**user),
+        message="Signed in successfully.",
+    )
+
+
+@app.post("/auth/logout")
+async def logout(response: Response):
+    """Clear session cookie and terminate the authenticated session."""
+    cfg = get_settings()
+    response.delete_cookie(key=cfg.session_cookie_name)
+    return {"message": "Signed out successfully."}
+
+
+@app.get("/auth/me", response_model=UserPublic)
+async def get_me(user: Dict[str, Any] = Depends(auth.get_current_user_required)):
+    """Retrieve details for the currently authenticated user."""
+    return UserPublic(**user)
+
+
+@app.get("/auth/github")
+async def github_login_redirect(request: Request):
+    """Initiate GitHub OAuth flow by returning URL or redirecting to GitHub."""
+    cfg = get_settings()
+    if not cfg.github_oauth_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="GitHub OAuth is not configured. Please set GITHUB_OAUTH_CLIENT_ID and GITHUB_OAUTH_CLIENT_SECRET.",
+        )
+
+    redirect_uri = str(request.url_for("github_callback"))
+    state = secrets.token_urlsafe(16)
+    auth_url = auth.build_github_oauth_url(
+        client_id=cfg.github_oauth_client_id,
+        redirect_uri=redirect_uri,
+        state=state,
+    )
+    if "application/json" in request.headers.get("accept", ""):
+        return {"auth_url": auth_url}
+    return RedirectResponse(url=auth_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+
+
+@app.get("/auth/github/callback")
+async def github_callback(
+    request: Request,
+    response: Response,
+    code: Optional[str] = None,
+    error: Optional[str] = None,
+):
+    """Handle callback from GitHub OAuth, exchange code, upsert user, and set session."""
+    if error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"GitHub OAuth error: {error}",
+        )
+    if not code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing OAuth code parameter.",
+        )
+
+    cfg = get_settings()
+    if not cfg.github_oauth_client_id or not cfg.github_oauth_client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="GitHub OAuth is not configured on this server.",
+        )
+
+    redirect_uri = str(request.url_for("github_callback"))
+    access_token = await auth.exchange_github_code_for_token(
+        client_id=cfg.github_oauth_client_id,
+        client_secret=cfg.github_oauth_client_secret,
+        code=code,
+        redirect_uri=redirect_uri,
+    )
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Failed to obtain access token from GitHub.",
+        )
+
+    user_info = await auth.fetch_github_user_info(access_token)
+    if not user_info:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to retrieve profile information from GitHub.",
+        )
+
+    user = db.upsert_github_user(
+        github_id=user_info["github_id"],
+        github_login=user_info["github_login"],
+        email=user_info["email"],
+    )
+
+    token = auth.create_session_token(user["id"])
+    redirect_resp = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    redirect_resp.set_cookie(
+        key=cfg.session_cookie_name,
+        value=token,
+        max_age=cfg.session_max_age_seconds,
+        httponly=True,
+        samesite="lax",
+        secure=False if cfg.environment == "development" else True,
+    )
+    return redirect_resp
 
 
 @app.post("/upload")

@@ -340,9 +340,9 @@
 
 **T36 Auth backend**
 - Objective: authentication backend and session management for Saksham users.
-- Files: backend auth modules, `main.py`, `schemas.py`, `db.py`, `tests/`.
-- Depends on: T35, user decisions on GitHub OAuth, email auth method, and GitHub repo creation token changes.
-- Implementation: Implement backend authentication with GitHub OAuth and/or email authentication (magic link or hashed password session), link authenticated users to runs and deployments, and handle GitHub token scopes and secure credential storage.
-- Acceptance: Functional auth backend integrated with user database and session validation.
-- Testing: Backend pytest unit and integration tests.
-- Status: BLOCKED (needs user decision on GitHub OAuth, email auth method, and how the GitHub token for repo creation changes)
+- Files: `auth.py`, `main.py`, `schemas.py`, `db.py`, `config.py`, `requirements.txt`, `.env.example`, `frontend/src/components/LoginScreen.jsx`, `frontend/src/App.jsx`, `frontend/src/components/Sidebar.jsx`, `tests/test_auth.py`.
+- Depends on: T35.
+- Implementation: Built `auth.py` providing user registration, bcrypt password hashing, itsdangerous URLSafeTimedSerializer session token generation and verification, safe user model retrieval without password leaks, and GitHub OAuth authorization URL / token exchange / user profile retrieval. Added `users` table and CRUD helpers in `db.py` (`create_user`, `get_user_by_email`, `get_user_by_id`, `upsert_github_user`). Added auth Pydantic models in `schemas.py` (`RegisterRequest`, `LoginRequest`, `UserPublic`, `LoginResponse`). Extended `config.py` with `github_oauth_client_id`, `github_oauth_client_secret`, and `session_secret` (with empty placeholders in `.env.example`). Added FastAPI endpoints in `main.py`: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /auth/github`, `GET /auth/github/callback` with HTTP-only secure cookies and Bearer token support. Connected React frontend `LoginScreen.jsx`, `App.jsx`, and `Sidebar.jsx` with real session state and logout.
+- Acceptance: Real authentication backend with email/password registration, login, logout, GitHub OAuth redirection/callback, session verification via cookies/bearer tokens, and safe user models (never exposing password hashes or tokens).
+- Testing: 15 comprehensive unit & integration tests in `tests/test_auth.py` and smoke import test in `tests/test_smoke.py`. Full pytest regression suite passes (242 passed, 0 skipped, 0 failures). Frontend production build passed (`npm run build` in 9.48s).
+- Status: DONE

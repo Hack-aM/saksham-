@@ -2,45 +2,117 @@ import React, { useState } from 'react'
 import Button from './Button'
 
 /**
- * T35: Login Screen (UI only).
+ * T36: Authenticated Login & Registration Screen.
  * Scoped dark-theme layout with two columns:
  * - Left: centered form column (max-width 400px)
  * - Right: sample product preview panel (hidden on <= 860px)
  *
- * NOTE: Authentication backend is not connected yet (pending T36).
- * No credentials are sent, logged, or saved to localStorage/cookies.
+ * Supports:
+ * - GitHub OAuth sign-in flow
+ * - Email/password authentication and registration
+ * - Client feedback and session establishment
  */
-export default function LoginScreen({ onNavigateHome }) {
+export default function LoginScreen({ onNavigateHome, onLoginSuccess }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [authNotice, setAuthNotice] = useState('')
+  const [isCreateAccount, setIsCreateAccount] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [infoNotice, setInfoNotice] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleGitHubSignIn = (e) => {
+  const handleGitHubSignIn = async (e) => {
     e.preventDefault()
-    // T35: No fake login. Inform the user that auth backend is pending T36.
-    setAuthNotice('Authentication is not connected yet. Backend authentication will be implemented in T36.')
+    setErrorMessage('')
+    setInfoNotice('')
+    try {
+      const resp = await fetch('/auth/github', {
+        headers: { Accept: 'application/json' },
+      })
+      if (!resp.ok) {
+        let errText = 'GitHub OAuth is not configured on this server. Please sign in with email.'
+        try {
+          const errData = await resp.json()
+          if (errData.detail) errText = errData.detail
+        } catch {}
+        setErrorMessage(errText)
+        return
+      }
+      const data = await resp.json().catch(() => ({}))
+      if (data.auth_url) {
+        window.location.href = data.auth_url
+      } else {
+        window.location.href = '/auth/github'
+      }
+    } catch {
+      window.location.href = '/auth/github'
+    }
   }
 
-  const handleEmailSignIn = (e) => {
+  const handleEmailSubmit = async (e) => {
     e.preventDefault()
-    // T35: No fake login. Inform the user that auth backend is pending T36.
-    setAuthNotice('Authentication is not connected yet. Backend authentication will be implemented in T36.')
+    setErrorMessage('')
+    setInfoNotice('')
+
+    if (!email || !password) {
+      setErrorMessage('Please provide both email and password.')
+      return
+    }
+
+    if (isCreateAccount && password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters long.')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const endpoint = isCreateAccount ? '/auth/register' : '/auth/login'
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        let msg = data.detail || (isCreateAccount ? 'Registration failed.' : 'Sign in failed.')
+        if (Array.isArray(msg)) {
+          msg = msg.map((m) => m.msg || JSON.stringify(m)).join(', ')
+        }
+        throw new Error(msg)
+      }
+
+      if (onLoginSuccess) {
+        onLoginSuccess(data.user)
+      }
+      if (onNavigateHome) {
+        onNavigateHome()
+      }
+    } catch (err) {
+      setErrorMessage(err.message || 'Authentication failed. Please check your credentials.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleForgotPassword = (e) => {
     e.preventDefault()
-    setAuthNotice('Password reset is not connected yet. Backend authentication will be implemented in T36.')
+    setErrorMessage('')
+    setInfoNotice('Password reset: Contact your workspace administrator to reset credentials.')
   }
 
-  const handleCreateAccount = (e) => {
+  const toggleMode = (e) => {
     e.preventDefault()
-    setAuthNotice('Account creation is not connected yet. Backend authentication will be implemented in T36.')
+    setIsCreateAccount(!isCreateAccount)
+    setErrorMessage('')
+    setInfoNotice('')
   }
 
   return (
     <div className="login-page">
       {/* Left Column: Form Column (max-width 400px, vertically centered) */}
-      <section className="login-form-col" aria-label="Sign in form">
+      <section className="login-form-col" aria-label={isCreateAccount ? 'Create account form' : 'Sign in form'}>
         <div className="login-form-container">
           {/* 1. Logo "Saksham" (accent #4FC4BB, 22px / weight 800) */}
           <div className="login-logo-wrapper">
@@ -59,19 +131,31 @@ export default function LoginScreen({ onNavigateHome }) {
             </a>
           </div>
 
-          {/* 2. H1 "Sign in to Saksham" */}
-          <h1 className="login-heading">Sign in to Saksham</h1>
+          {/* 2. H1 */}
+          <h1 className="login-heading">
+            {isCreateAccount ? 'Create your Saksham account' : 'Sign in to Saksham'}
+          </h1>
 
           {/* 3. Subtitle */}
           <p className="login-subtitle">
-            Audit your project before it reaches GitHub. Deploy with confidence.
+            {isCreateAccount
+              ? 'Get started with pre-push audit and deployment safety.'
+              : 'Audit your project before it reaches GitHub. Deploy with confidence.'}
           </p>
 
-          {/* Inline alert notice when user attempts interaction before T36 */}
-          {authNotice && (
-            <div className="login-alert-notice" role="alert" aria-live="polite">
+          {/* Error notice */}
+          {errorMessage && (
+            <div className="login-alert-notice" role="alert" aria-live="assertive" style={{ borderLeftColor: 'var(--login-high-badge-text)' }}>
+              <span className="login-alert-icon" aria-hidden="true" style={{ color: 'var(--login-high-badge-text)' }}>⚠</span>
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* Info notice */}
+          {infoNotice && (
+            <div className="login-alert-notice" role="status" aria-live="polite">
               <span className="login-alert-icon" aria-hidden="true">ℹ</span>
-              <span>{authNotice}</span>
+              <span>{infoNotice}</span>
             </div>
           )}
 
@@ -80,6 +164,7 @@ export default function LoginScreen({ onNavigateHome }) {
             className="login-btn-github"
             onClick={handleGitHubSignIn}
             aria-label="Continue with GitHub"
+            disabled={isSubmitting}
           >
             <svg
               className="login-github-icon"
@@ -103,15 +188,17 @@ export default function LoginScreen({ onNavigateHome }) {
             Saksham only creates new repositories. It never deletes or force-pushes.
           </p>
 
-          {/* 6. Divider "or sign in with email" */}
-          <div className="login-divider" role="separator" aria-label="or sign in with email">
+          {/* 6. Divider */}
+          <div className="login-divider" role="separator" aria-label={isCreateAccount ? 'or register with email' : 'or sign in with email'}>
             <span className="login-divider-line" aria-hidden="true" />
-            <span className="login-divider-text">or sign in with email</span>
+            <span className="login-divider-text">
+              {isCreateAccount ? 'or register with email' : 'or sign in with email'}
+            </span>
             <span className="login-divider-line" aria-hidden="true" />
           </div>
 
           {/* Email + Password Form */}
-          <form className="login-form" onSubmit={handleEmailSignIn} noValidate>
+          <form className="login-form" onSubmit={handleEmailSubmit} noValidate>
             {/* 7. Email input */}
             <div className="login-form-group">
               <label htmlFor="login-email-input" className="login-label">
@@ -127,6 +214,7 @@ export default function LoginScreen({ onNavigateHome }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -139,45 +227,53 @@ export default function LoginScreen({ onNavigateHome }) {
                 id="login-password-input"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete={isCreateAccount ? 'new-password' : 'current-password'}
                 className="login-input"
-                placeholder="Enter your password"
+                placeholder={isCreateAccount ? 'Create a secure password (min 8 chars)' : 'Enter your password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isSubmitting}
               />
             </div>
 
-            {/* 9. "Forgot password?" link right-aligned */}
-            <div className="login-forgot-wrapper">
-              <a
-                href="#forgot"
-                className="login-link login-forgot-link"
-                onClick={handleForgotPassword}
-              >
-                Forgot password?
-              </a>
-            </div>
+            {/* 9. "Forgot password?" link right-aligned (only on sign in mode) */}
+            {!isCreateAccount && (
+              <div className="login-forgot-wrapper">
+                <a
+                  href="#forgot"
+                  className="login-link login-forgot-link"
+                  onClick={handleForgotPassword}
+                >
+                  Forgot password?
+                </a>
+              </div>
+            )}
 
-            {/* 10. Secondary button "Sign in with email" */}
+            {/* 10. Secondary button */}
             <Button
               type="submit"
               variant="secondary"
               className="login-btn-email"
+              disabled={isSubmitting}
             >
-              Sign in with email
+              {isSubmitting
+                ? 'Processing...'
+                : isCreateAccount
+                ? 'Create account'
+                : 'Sign in with email'}
             </Button>
           </form>
 
-          {/* 11. Footer: "New to Saksham? Create an account" */}
+          {/* 11. Footer toggle */}
           <footer className="login-footer">
-            <span>New to Saksham? </span>
+            <span>{isCreateAccount ? 'Already have an account? ' : 'New to Saksham? '}</span>
             <a
-              href="#create-account"
+              href="#toggle-mode"
               className="login-link login-create-link"
-              onClick={handleCreateAccount}
+              onClick={toggleMode}
             >
-              Create an account
+              {isCreateAccount ? 'Sign in' : 'Create an account'}
             </a>
           </footer>
         </div>
@@ -189,7 +285,6 @@ export default function LoginScreen({ onNavigateHome }) {
           <div className="login-preview-label">What you get on every run</div>
 
           {/* Main sample run card */}
-          {/* Sample illustrative data: static preview of audit run */}
           <div className="login-card login-main-preview-card">
             <div className="login-preview-card-header">
               <div className="login-readiness-wrapper">
@@ -229,7 +324,6 @@ export default function LoginScreen({ onNavigateHome }) {
           </div>
 
           {/* Sub cards: Fixes and Deploy */}
-          {/* Sample illustrative data: static preview of fixes & deploy cards */}
           <div className="login-subcards-grid">
             <div className="login-card login-subcard">
               <span className="login-subcard-label">Fixes</span>

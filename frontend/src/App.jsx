@@ -20,10 +20,21 @@ export default function App() {
   }
 
   const [isLoginRoute, setIsLoginRoute] = useState(getIsLoginRoute)
+  const [currentUser, setCurrentUser] = useState(null)
   const [activeNav, setActiveNav] = useState('new-deploy') // 'new-deploy' | 'history' | 'connections' | 'settings'
   const [currentStep, setCurrentStep] = useState(1)
   const [analysisResult, setAnalysisResult] = useState(null)
   const [repoConfig, setRepoConfig] = useState(null)
+
+  useEffect(() => {
+    // Check active authenticated session
+    fetch('/auth/me', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((user) => {
+        if (user) setCurrentUser(user)
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const handleLocationChange = () => {
@@ -116,20 +127,37 @@ export default function App() {
     }
   }
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/auth/logout', { method: 'POST', credentials: 'include' })
+    } catch {}
+    setCurrentUser(null)
+  }
+
   const handleNavSelect = (navId) => {
     setActiveNav(navId)
   }
 
   if (isLoginRoute) {
-    return <LoginScreen onNavigateHome={handleNavigateHome} />
+    return (
+      <LoginScreen
+        onNavigateHome={handleNavigateHome}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user)
+          handleNavigateHome()
+        }}
+      />
+    )
   }
 
   return (
     <div className="app-layout">
       <Sidebar
         activeNav={activeNav}
+        currentUser={currentUser}
         onNavSelect={handleNavSelect}
         onNavigateLogin={handleNavigateToLogin}
+        onLogout={handleLogout}
       />
 
       <main className="app-main">

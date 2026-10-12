@@ -45,7 +45,13 @@ const NAV_ITEMS = [
 /**
  * Sidebar navigation component matching DESIGN.md specifications.
  */
-export default function Sidebar({ activeNav = 'new-deploy', onNavSelect, onNavigateLogin }) {
+export default function Sidebar({
+  activeNav = 'new-deploy',
+  currentUser = null,
+  onNavSelect,
+  onNavigateLogin,
+  onLogout,
+}) {
   return (
     <aside className="app-sidebar">
       <div className="sidebar-brand">
@@ -68,16 +74,51 @@ export default function Sidebar({ activeNav = 'new-deploy', onNavSelect, onNavig
       </nav>
 
       <div className="sidebar-footer">
-        <a
-          href="/login"
-          className="sidebar-login-link"
-          onClick={(e) => {
-            e.preventDefault()
-            if (onNavigateLogin) onNavigateLogin()
-          }}
-        >
-          Sign in
-        </a>
+        {currentUser ? (
+          <div className="sidebar-user-section" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+            <span
+              style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: 'var(--color-ink)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              title={currentUser.email}
+            >
+              {currentUser.github_login ? `@${currentUser.github_login}` : currentUser.email}
+            </span>
+            <button
+              type="button"
+              className="sidebar-login-link"
+              onClick={onLogout}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                textAlign: 'left',
+                color: 'var(--color-muted)',
+                fontSize: '12px',
+                fontFamily: 'inherit',
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <a
+            href="/login"
+            className="sidebar-login-link"
+            onClick={(e) => {
+              e.preventDefault()
+              if (onNavigateLogin) onNavigateLogin()
+            }}
+          >
+            Sign in
+          </a>
+        )}
         <p>Saksham v0.1.0 (MVP)</p>
       </div>
     </aside>

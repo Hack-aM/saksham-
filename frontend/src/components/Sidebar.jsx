@@ -45,7 +45,7 @@ const NAV_ITEMS = [
 /**
  * Sidebar navigation component matching DESIGN.md specifications.
  */
-export default function Sidebar({ activeNav = 'new-deploy', onNavSelect }) {
+export default function Sidebar({ activeNav = 'new-deploy', onNavSelect, onNavigateLogin }) {
   return (
     <aside className="app-sidebar">
       <div className="sidebar-brand">
@@ -68,6 +68,16 @@ export default function Sidebar({ activeNav = 'new-deploy', onNavSelect }) {
       </nav>
 
       <div className="sidebar-footer">
+        <a
+          href="/login"
+          className="sidebar-login-link"
+          onClick={(e) => {
+            e.preventDefault()
+            if (onNavigateLogin) onNavigateLogin()
+          }}
+        >
+          Sign in
+        </a>
         <p>Saksham v0.1.0 (MVP)</p>
       </div>
     </aside>

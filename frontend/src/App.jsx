@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
 import UploadScreen from './components/UploadScreen'
@@ -7,14 +7,49 @@ import LiveScreen from './components/LiveScreen'
 import HistoryScreen from './components/HistoryScreen'
 import ConnectionsScreen from './components/ConnectionsScreen'
 import SettingsScreen from './components/SettingsScreen'
+import LoginScreen from './components/LoginScreen'
 import Card from './components/Card'
 import Button from './components/Button'
 
 export default function App() {
+  const getIsLoginRoute = () => {
+    if (typeof window === 'undefined') return false
+    const p = window.location.pathname.toLowerCase()
+    const h = window.location.hash.toLowerCase()
+    return p === '/login' || p.endsWith('/login') || h === '#/login' || h === '#login'
+  }
+
+  const [isLoginRoute, setIsLoginRoute] = useState(getIsLoginRoute)
   const [activeNav, setActiveNav] = useState('new-deploy') // 'new-deploy' | 'history' | 'connections' | 'settings'
   const [currentStep, setCurrentStep] = useState(1)
   const [analysisResult, setAnalysisResult] = useState(null)
   const [repoConfig, setRepoConfig] = useState(null)
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setIsLoginRoute(getIsLoginRoute())
+    }
+    window.addEventListener('popstate', handleLocationChange)
+    window.addEventListener('hashchange', handleLocationChange)
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange)
+      window.removeEventListener('hashchange', handleLocationChange)
+    }
+  }, [])
+
+  const handleNavigateToLogin = () => {
+    if (window.location.pathname !== '/login') {
+      window.history.pushState({}, '', '/login')
+    }
+    setIsLoginRoute(true)
+  }
+
+  const handleNavigateHome = () => {
+    if (window.location.pathname !== '/') {
+      window.history.pushState({}, '', '/')
+    }
+    setIsLoginRoute(false)
+  }
 
   const handleAnalyzeSuccess = (result, config) => {
     setAnalysisResult(result)
@@ -85,9 +120,17 @@ export default function App() {
     setActiveNav(navId)
   }
 
+  if (isLoginRoute) {
+    return <LoginScreen onNavigateHome={handleNavigateHome} />
+  }
+
   return (
     <div className="app-layout">
-      <Sidebar activeNav={activeNav} onNavSelect={handleNavSelect} />
+      <Sidebar
+        activeNav={activeNav}
+        onNavSelect={handleNavSelect}
+        onNavigateLogin={handleNavigateToLogin}
+      />
 
       <main className="app-main">
         <div className="app-content">

@@ -327,3 +327,22 @@
 - Acceptance: all three exist; stat is real, not invented.
 - Testing: review by team.
 - Status: TODO
+
+## Phase 10: Authentication
+**T35 Login screen (UI only)**
+- Objective: build the login screen in the React frontend matching the dark theme design (UI only, no auth backend).
+- Files: `frontend/src/components/LoginScreen.jsx`, `frontend/src/App.jsx`, `frontend/src/index.css`.
+- Depends on: T24.
+- Implementation: Two-column page (left form column max-width 400px vertically centered, right product preview panel hidden below 860px width). Theme: dark (bg #0E1418, right panel #121A20, panel border #25313A, cards #18232B, text #E8EEF2, muted #9DB0BC, input border #33424D, accent #4FC4BB with button text #07211F, High badge bg #2C1A19 / text #FF8A80, Medium badge bg #2B2312 / text #F2C46B; Plus Jakarta Sans 400/600/800, radius 8px controls, 12px cards, min control height 44px). Left column: Saksham logo (accent, 22px/800); h1 "Sign in to Saksham"; subtitle "Audit your project before it reaches GitHub. Deploy with confidence."; primary button "Continue with GitHub" with GitHub mark icon (inline SVG, aria-hidden); helper text "Saksham only creates new repositories. It never deletes or force-pushes."; divider "or sign in with email"; Email input (label, type=email, autocomplete=email); Password input (label, type=password, autocomplete=current-password); "Forgot password?" right-aligned link; secondary button "Sign in with email"; footer "New to Saksham? Create an account". Right panel: label "What you get on every run"; card with "Deploy readiness 40/100", badge "Push blocked", and three rows: High "API key found in config.py, line 12", Medium ".env is not in .gitignore", Medium "Port is hardcoded"; below it two small cards: "Fixes: You approve each diff" and "Deploy: Live URL, health checked" (sample illustrative data). Accessibility: real button/a/label elements, visible focus ring (2px accent), contrast >= 4.5:1, touch targets >= 44px. No fake login: buttons do not pretend to log in (show inline message that auth backend is not connected yet, no credentials sent/stored).
+- Acceptance: Login screen renders on login route matching the design; existing screens are not restyled; right panel hides on <= 860px; buttons indicate auth backend not connected without sending or storing credentials; zero new dependencies.
+- Testing: Frontend production build passed (`npm run build` in 9.27s), backend regression suite passed (`.\.venv\Scripts\python.exe -m pytest -q`: 226 passed), documented manual test checklist.
+- Status: DONE
+
+**T36 Auth backend**
+- Objective: authentication backend and session management for Saksham users.
+- Files: backend auth modules, `main.py`, `schemas.py`, `db.py`, `tests/`.
+- Depends on: T35, user decisions on GitHub OAuth, email auth method, and GitHub repo creation token changes.
+- Implementation: Implement backend authentication with GitHub OAuth and/or email authentication (magic link or hashed password session), link authenticated users to runs and deployments, and handle GitHub token scopes and secure credential storage.
+- Acceptance: Functional auth backend integrated with user database and session validation.
+- Testing: Backend pytest unit and integration tests.
+- Status: BLOCKED (needs user decision on GitHub OAuth, email auth method, and how the GitHub token for repo creation changes)

@@ -26,7 +26,7 @@ FastAPI pipeline: scanner, audit, fixer (LLM), github_push, deployer, with Pydan
 - D15: LLM Provider: Google Gemini API (`gemini-2.5-flash` via `google-genai` / `google-generativeai`) [NC-3].
 - D16: Deploy Platform: Render API. No mock deployer in product flow; MOCK allowed only in tests [NC-4].
 - D17: Persistence: SQLite database (`saksham.db`) for run and deploy history [NC-5].
-- D18: Authentication: Single-user application, no login in MVP [NC-6].
+- D18: Authentication: NC-6 REOPENED. Earlier decision was single-user, no login in MVP. User now wants a login page with GitHub login and email login. T35 implements Login screen (UI only; dark theme, login route only, no fake login, no credentials sent/stored). T36 (Auth backend) proposed and BLOCKED pending user decisions. [NC-6].
 - D19: Readiness Score: Base 100; High severity -30, Medium -15, Low -5; bounded 0-100 [NC-7].
 - D20: UI Language: English throughout the application [NC-8].
 - D21: Upload method: ZIP upload (max 25MB, path-traversal validated); scan git history if `.git` is included, else report "history not available" [NC-10].
@@ -68,17 +68,19 @@ FastAPI pipeline: scanner, audit, fixer (LLM), github_push, deployer, with Pydan
 - **T28: History, Connections, Settings screens implemented in `frontend/` (`HistoryScreen.jsx`, `ConnectionsScreen.jsx`, `SettingsScreen.jsx`, `App.jsx`, `main.py`, `tests/test_history_settings.py`) with SQLite `/history` querying, safe integration status metadata `/connections`, operational parameters `/settings`, and functional sidebar navigation, verified via Vite production build and full pytest regression suite (214 passed).**
 - **T29: End-to-end happy path implemented and verified across whole pipeline (`main.py`, `frontend/src/App.jsx`, `frontend/src/components/ConnectionsScreen.jsx`, `db.py`, `deployer.py`, `tests/test_e2e_happy_path.py`), orchestrating ZIP upload -> analyze -> audit -> patch approval -> secret gate -> mocked GitHub push -> mocked Render deploy -> live health verification & self-fix -> SQLite history persistence -> real-time SSE progress streaming -> terminal completion, verified via Vite build and full pytest regression suite (223 passed).**
 - **T30: Final Integration Hardening and Demo Readiness verified across the complete application (`main.py`, `db.py`, `config.py`, `schemas.py`, `upload.py`, `scanner.py`, `audit.py`, `fixer.py`, `github_push.py`, `deployer.py`, `redact.py`, `frontend/src/*`, `README.md`, `tests/*`). Full codebase security audit passed with zero exposed credentials; human approval and secret gate verified; bounded self-fix and SSE resilience confirmed; API error responses sanitized; and README documentation completed, verified via clean Vite production build and full pytest regression suite (223 passed).**
+- **T35: Login screen (UI only) implemented in `frontend/` (`LoginScreen.jsx`, `App.jsx`, `Sidebar.jsx`, `index.css`). Created two-column layout with scoped dark theme (#0E1418 page bg, #121A20 preview panel, #25313A border, #18232B cards, #E8EEF2 text, #9DB0BC muted, #33424D input border, #4FC4BB accent with #07211F button text, High badge bg #2C1A19 / text #FF8A80, Medium badge bg #2B2312 / text #F2C46B; Plus Jakarta Sans; min 44px control height; 2px accent focus ring; WCAG AA contrast). Form column contains logo, heading, subtitle, primary Continue with GitHub button with inline SVG mark, helper text, divider, email and password inputs with labels and autocomplete, forgot password link, secondary Sign in with email button, and Create an account footer. Right preview panel shows sample Deploy Readiness 40/100 card with Push blocked badge, 3 issue rows, and 2 sub-cards (Fixes and Deploy), hidden on <= 860px. Verified no fake authentication: buttons alert that backend auth is pending T36, no credentials sent or stored. Existing screens completely unstyled. Verified via clean Vite build (`npm run build` in 9.27s) and pytest regression suite (226 passed).**
 
 ## IN PROGRESS
 - None.
 
 ## NEXT
-- **FINAL REVIEW**
+- Waiting for user decisions on T36 Auth backend (BLOCKED) or next instruction.
 
 ## BLOCKED
-- None.
+- **T36: Auth backend** (needs user decision on GitHub OAuth, email auth method, and how the GitHub token for repo creation changes).
 
 ## PENDING DECISIONS (Needs clarification)
+- NC-6 (REOPENED: User decision needed for T36 on GitHub OAuth, email auth method, and GitHub repo creation token changes).
 - Non-blocking: NC-9 (Hackathon specifics: deadline, team size), NC-12 (Exact extra screens mockup details).
 
 ## KNOWN ISSUES
@@ -118,6 +120,7 @@ FastAPI pipeline: scanner, audit, fixer (LLM), github_push, deployer, with Pydan
 - 2026-10-08: T26 completed. Implemented Audit screen in `frontend/src/components/AuditScreen.jsx` consuming real `AnalysisResult` data with 56px Deploy Readiness Score visualization, deduction reasons list, categorized findings with severity filtering (All, High, Medium, Low), clean/empty state handling, and suggested fix review CTA. Verified via Vite build and full pytest regression suite (210 passed, 0 skipped).
 - 2026-10-08: T27 completed. Implemented Live screen in `frontend/src/components/LiveScreen.jsx` connecting to `GET /events/{run_id}` via native browser EventSource with 5-stage deployment checklist, autoscrolling monospace streaming log console, bounded reconnect handling, terminal success/error handling, and live service/repo URL links. Verified via Vite build and full pytest regression suite (210 passed, 0 skipped).
 - 2026-10-08: T28 completed. Implemented History, Connections, and Settings screens (`HistoryScreen.jsx`, `ConnectionsScreen.jsx`, `SettingsScreen.jsx`) with backend endpoints `GET /history`, `GET /connections`, `GET /settings` in `main.py`, SQLite persistence querying, integration status without credential leakage, operational parameter review, and full sidebar navigation. Verified via Vite build and backend test suite (214 passed, 0 skipped).
+- 2026-10-12: T35 completed. Recorded NC-6 REOPENED in PRD.md & MEMORY.md. Added T35 (UI only) and T36 (Auth backend, BLOCKED). Built dark-themed login screen in React (`frontend/src/components/LoginScreen.jsx`, `App.jsx`, `Sidebar.jsx`, `index.css`) matching two-column design and tokens (#0E1418, #121A20, #25313A, #18232B, #E8EEF2, #9DB0BC, #33424D, #4FC4BB, badges, Plus Jakarta Sans, min-height 44px, 2px focus ring, contrast >= 4.5:1). Right preview panel responsive hiding (<860px). Interactive actions display non-connected message without sending or storing credentials. Existing screens unstyled. Verified via Vite build (`npm run build` in 9.27s) and pytest regression suite (226 passed).
 
 ## Things the coding agent must remember
 - Follow RULES.md. Ask before major architectural changes; do not touch unrelated files.

@@ -90,7 +90,7 @@ Features 1-13 above, restricted to one project type (FastAPI) and one deploy pla
 - GitHub: Personal Access Token for MVP with scopes `repo` and `workflow`. Permission used only to create new repos. OAuth is post-MVP.
 - Deploy platform: Render API token (`RENDER_API_KEY`).
 - LLM provider: Google Gemini API key (`GEMINI_API_KEY`, model `gemini-2.5-flash`).
-- Saksham user login: Single-user, no login for MVP (local/web tool).
+- Saksham user login: Earlier decision was single-user without login (NC-6). **NC-6 is REOPENED**: user now wants a login page with GitHub login and email login. T35 implements the Login screen (UI only; dark theme, login route only). Auth backend is NOT part of T35; proposed task T36 (Auth backend) is BLOCKED pending user decisions on GitHub OAuth, email auth method, and GitHub repo creation token changes.
 
 ## 14. Data requirements
 - Uploaded project files: Temporary working copy extracted from ZIP (max 25MB, path-traversal validated), deleted after run.
@@ -111,7 +111,6 @@ Features 1-13 above, restricted to one project type (FastAPI) and one deploy pla
 - Multiple deploy platforms in MVP (Render is the sole target).
 - Deleting repos, force-pushing, or any destructive GitHub action.
 - LangGraph, Redis, Celery in MVP.
-- User login / multi-tenancy in MVP.
 - Mobile-specific design.
 
 ## 17. Decisions & Clarifications Log
@@ -122,7 +121,7 @@ Features 1-13 above, restricted to one project type (FastAPI) and one deploy pla
 | NC-3 | LLM Provider | **Decided:** Google Gemini API (`gemini-2.5-flash` via `google-genai`). |
 | NC-4 | Deploy Platform | **Decided:** Render API. No mock deployer in product flow; MOCK used only in unit/integration tests. |
 | NC-5 | Database / History | **Decided:** SQLite database for storing deploy history and run results. |
-| NC-6 | Saksham Login | **Decided:** Single-user application, no login in MVP. |
+| NC-6 | Saksham Login | **REOPENED:** User now wants a login page with GitHub login and email login. T35 implements UI only (login route, dark theme, no backend auth yet, buttons show not connected without sending or storing credentials). T36 (Auth backend) is proposed and marked BLOCKED (needs user decision on GitHub OAuth, email auth method, and how the GitHub token for repo creation changes). |
 | NC-7 | Score Formula | **Decided:** Base 100; High severity -30, Medium -15, Low -5. (Floor 0, Cap 100). |
 | NC-8 | UI Language | **Decided:** English throughout the entire UI. |
 | NC-9 | Hackathon details | Non-blocking hackathon deliverables (7-slide deck, backup demo video, leak stat). |
